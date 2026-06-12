@@ -81,6 +81,12 @@ body{background:#03030a;overflow:hidden;font-family:'Outfit',sans-serif}
 <!-- Socket.IO & Three.js CDN -->
 <script src="/socket.io/socket.io.js"></script>
 <script src="lib/three.min.js"></script>
+    <script src="lib/EffectComposer.js"></script>
+    <script src="lib/RenderPass.js"></script>
+    <script src="lib/ShaderPass.js"></script>
+    <script src="lib/CopyShader.js"></script>
+    <script src="lib/LuminosityHighPassShader.js"></script>
+    <script src="lib/UnrealBloomPass.js"></script>
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -96,8 +102,10 @@ function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  if (typeof composer !== 'undefined') composer.setSize(innerWidth, innerHeight);
 }
 window.addEventListener('resize', resize);
+
 
 // ══════════════════════════════════════════════════════
 //  SCENE & CAMERA
@@ -109,6 +117,19 @@ scene.background = new THREE.Color(0x030308);
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 250);
 camera.position.set(0, 8, 14);
 resize();
+
+// ══════════════════════════════════════════════════════
+//  POST PROCESSING (BLOOM)
+// ══════════════════════════════════════════════════════
+const renderScene = new THREE.RenderPass(scene, camera);
+const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.5, 0.4, 0.85);
+bloomPass.threshold = 0.1;
+bloomPass.strength = 1.2;
+bloomPass.radius = 0.5;
+
+const composer = new THREE.EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
 
 // ══════════════════════════════════════════════════════
 //  LIGHTING
@@ -788,11 +809,14 @@ function animate() {
       rp.mesh.rotation.y = THREE.MathUtils.lerp(rp.mesh.rotation.y, rp.targetRot, 0.2);
   });
 
-  if (gameOver || won) { renderer.render(scene, camera); return; }
+  if (gameOver || won) { composer.render(); return; }
 
   if (!raceFinished && startTime > 0) {
       document.getElementById('timer-ui').style.display = 'block';
-      document.getElementById('timer-ui').textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+      let totalSeconds = Math.floor((Date.now() - startTime) / 1000);
+      let m = Math.floor(totalSeconds / 60);
+      let s = totalSeconds % 60;
+      document.getElementById('timer-ui').textContent = (m > 0 ? m + ':' : '') + (s < 10 && m > 0 ? '0' : '') + s + 's';
       
       // Record run
       if (Math.floor(t * 10) % 2 === 0) { // Limit recording rate
@@ -1028,7 +1052,7 @@ function animate() {
   camera.lookAt(camLook);
 
   drawMinimap();
-  renderer.render(scene, camera);
+  composer.render();
 }
 
 // ══════════════════════════════════════════════════════
