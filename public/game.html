@@ -116,7 +116,6 @@ scene.background = new THREE.Color(0x030308);
 
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 250);
 camera.position.set(0, 8, 14);
-resize();
 
 // ══════════════════════════════════════════════════════
 //  POST PROCESSING (BLOOM)
@@ -130,6 +129,8 @@ bloomPass.radius = 0.5;
 const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
+
+resize();
 
 // ══════════════════════════════════════════════════════
 //  LIGHTING
