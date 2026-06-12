@@ -963,15 +963,29 @@ function animate() {
   // ── Platform collision
   onGround = false;
   let standingOn = null;
+  let touchingWall = false;
   platforms.forEach(p => {
     const ptop = p.mesh.position.y + 0.28;
     const inX  = pp.x > p.x - p.w/2 - 0.36 && pp.x < p.x + p.w/2 + 0.36;
     const inZ  = pp.z > p.z - p.d/2 - 0.36 && pp.z < p.z + p.d/2 + 0.36;
+    
+    // Top Collision (Landing)
     if (inX && inZ && vel.y <= 0 && prevY - 0.44 >= ptop - 0.15 && pp.y - 0.44 < ptop + 0.15) {
       pp.y = ptop + 0.44; vel.y = 0; onGround = true; jumpsLeft = 2;
       standingOn = p;
     }
+    // Wall Slide (Hitting sides while falling)
+    else if (inX && inZ && vel.y < 0 && pp.y < ptop) {
+      touchingWall = true;
+      if (vel.y < -4) vel.y = -4; // Slow slide down
+    }
   });
+
+  // Wall Jump mechanic
+  if (touchingWall && !onGround) {
+      jumpsLeft = Math.max(jumpsLeft, 1); // Give back a jump
+      if (Math.random() < 0.2) spawnParticles(pp.clone(), 0xffffff, 1, 1); // Friction sparks
+  }
 
   if (onGround && standingOn && standingOn.moveAxis) {
       pp.x += standingOn.deltaX;
