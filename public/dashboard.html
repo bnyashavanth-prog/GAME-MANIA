@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Racers - Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #03030a;
+            --panel-bg: rgba(20, 20, 30, 0.6);
+            --accent: #00e5ff;
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: 'Outfit', sans-serif;
+            background-image: radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        select, button {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid var(--accent);
+            color: var(--text-main);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        select:hover, button:hover {
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        .heatmap-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #heatmap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .stats-list {
+            list-style: none;
+        }
+
+        .stats-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 18px;
+        }
+
+        .stats-list li:last-child {
+            border-bottom: none;
+        }
+
+        .stat-value {
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: var(--text-main);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .back-btn:hover { opacity: 1; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/" class="back-btn">← Back to Game</a>
+    <header>
+        <h1>Neon Analytics</h1>
+        <div class="controls">
+            <select id="level-select">
+                <option value="1">Level 1 - Tutorial</option>
+                <option value="2">Level 2 - Moving Plats</option>
+                <option value="3">Level 3 - Sky Fortress</option>
+                <option value="4">Level 4 - Lava Keep</option>
+                <option value="5">Level 5 - The Gauntlet</option>
+            </select>
+            <button onclick="loadAnalytics()">Refresh Data</button>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- Heatmap Panel -->
+        <div class="panel">
+            <h2>Player Death Heatmap</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 14px;">Red zones indicate high failure rates (falling off the map).</p>
+            <div class="heatmap-container">
+                <canvas id="heatmap-canvas" width="600" height="600"></canvas>
+            </div>
+        </div>
+
+        <!-- Metrics Panel -->
+        <div class="panel">
+            <h2>Key Metrics</h2>
+            <ul class="stats-list">
+                <li>
+                    <span>Total Attempts</span>
+                    <span class="stat-value" id="stat-total-attempts">-</span>
+                </li>
+                <li>
+                    <span>Total Deaths</span>
+                    <span class="stat-value" id="stat-total-deaths">-</span>
+                </li>
+                <li>
+                    <span>Fastest Time (Ghost)</span>
+                    <span class="stat-value" id="stat-fastest-time">-</span>
+                </li>
+                <li>
+                    <span>Current Champion</span>
+                    <span class="stat-value" id="stat-champion">-</span>
+                </li>
+            </ul>
+
+            <h2 style="margin-top: 40px;">Ghost Replay Data</h2>
+            <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6;">
+                The server automatically records the X,Y,Z coordinates and rotation of the fastest player every 200ms. 
+                This data is stored in the SQLite database and transmitted to players to render the "Ghost Mesh" in real-time.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('heatmap-canvas');
+    const ctx = canvas.getContext('2d');
+
+    async function loadAnalytics() {
+        const level = document.getElementById('level-select').value;
+        
+        // 1. Fetch Deaths
+        const deathRes = await fetch('/api/analytics/deaths/' + level);
+        const deaths = await deathRes.json();
+        
+        document.getElementById('stat-total-deaths').textContent = deaths.length;
+
+        // Draw Heatmap
+        drawHeatmap(deaths);
+
+        // 2. Fetch Ghost
+        const ghostRes = await fetch('/api/ghosts/' + level);
+        const ghost = await ghostRes.json();
+        
+        if (ghost && ghost.name) {
+            document.getElementById('stat-fastest-time').textContent = ghost.time + 's';
+            document.getElementById('stat-champion').textContent = ghost.name;
+        } else {
+            document.getElementById('stat-fastest-time').textContent = 'None yet';
+            document.getElementById('stat-champion').textContent = 'N/A';
+        }
+    }
+
+    function drawHeatmap(deaths) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Background Grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for(let i=0; i<canvas.width; i+=40) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Draw deaths as glowing red dots
+        // Coordinates in game range from approx x: -30 to 30, z: 10 to -80 depending on level
+        // Let's normalize around center
+        const scale = 8; 
+        const offsetX = canvas.width / 2;
+        const offsetZ = canvas.height * 0.8; // Z goes negative in game, so start lower on canvas
+
+        deaths.forEach(d => {
+            const px = offsetX + (d.x * scale);
+            const py = offsetZ + (d.z * scale);
+
+            // Add glow
+            const gradient = ctx.createRadialGradient(px, py, 0, px, py, 15);
+            gradient.addColorStop(0, 'rgba(255, 0, 50, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 0, 50, 0.3)');
+            gradient.addColorStop(1, 'rgba(255, 0, 50, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(px, py, 15, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    // Initial load
+    loadAnalytics();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,6 @@
+node_modules/
+game_data.db
+.env
+.DS_Store
+patch*.js
+download_three.js

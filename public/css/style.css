@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+
+:root {
+    --primary: #00e5ff;
+    --primary-glow: rgba(0, 229, 255, 0.5);
+    --secondary: #ff00ff;
+    --secondary-glow: rgba(255, 0, 255, 0.5);
+    --bg-dark: #03030a;
+    --panel-bg: rgba(20, 20, 30, 0.6);
+    --panel-border: rgba(255, 255, 255, 0.1);
+    --text-main: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.6);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+}
+
+body {
+    background: var(--bg-dark);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Background effects */
+.bg-glow {
+    position: absolute;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, var(--primary-glow) 0%, transparent 60%);
+    top: -20vw;
+    left: -20vw;
+    opacity: 0.3;
+    z-index: -1;
+    filter: blur(80px);
+}
+
+.bg-glow.secondary {
+    background: radial-gradient(circle, var(--secondary-glow) 0%, transparent 60%);
+    top: auto;
+    bottom: -20vw;
+    left: auto;
+    right: -20vw;
+}
+
+.container {
+    background: var(--panel-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--panel-border);
+    border-radius: 24px;
+    padding: 40px;
+    width: 90%;
+    max-width: 800px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 229, 255, 0.1);
+    text-align: center;
+    z-index: 1;
+}
+
+h1 {
+    font-size: 48px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #fff, var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px var(--primary-glow);
+}
+
+p.subtitle {
+    font-size: 18px;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+}
+
+.form-group {
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+label {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary);
+}
+
+input[type="text"] {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: white;
+    font-size: 18px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.level-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.level-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.level-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-5px);
+}
+
+.level-card.selected {
+    background: rgba(0, 229, 255, 0.15);
+    border-color: var(--primary);
+    box-shadow: 0 0 20px var(--primary-glow);
+    transform: scale(1.05);
+}
+
+.level-num {
+    font-size: 32px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.level-name {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.join-btn {
+    background: linear-gradient(135deg, var(--primary), #0099ff);
+    color: #001133;
+    border: none;
+    border-radius: 100px;
+    padding: 18px 40px;
+    font-size: 20px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 10px 20px var(--primary-glow);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 100%;
+}
+
+.join-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px var(--primary-glow);
+    filter: brightness(1.2);
+}
+
+.join-btn:active {
+    transform: translateY(2px);
+}
+
+/* Error message */
+.error {
+    color: #ff3333;
+    font-size: 14px;
+    margin-top: -20px;
+    margin-bottom: 20px;
+    display: none;
+    text-align: left;
+}

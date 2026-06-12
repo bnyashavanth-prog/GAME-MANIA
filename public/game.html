@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Platformer Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#03030a;overflow:hidden;font-family:'Outfit',sans-serif}
+#c{display:block;width:100vw;height:100vh}
+#hud{position:absolute;top:0;left:0;right:0;padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
+.hud-panel{background:rgba(20,20,30,0.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:8px 20px;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.hud-val{font-size:22px;color:#00e5ff;font-weight:800;text-shadow:0 0 10px rgba(0,229,255,0.5)}
+#healthbar{display:flex;gap:6px}
+.heart{font-size:20px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);filter:drop-shadow(0 0 4px rgba(255,0,50,0.6))}
+.heart.empty{opacity:0.2;filter:grayscale(100%)}
+#powerup-display{position:absolute;top:90px;left:24px;background:rgba(20,20,30,0.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(0,229,255,0.3);border-radius:16px;padding:8px 20px;color:#00e5ff;font-size:14px;font-weight:600;display:none;box-shadow:0 8px 32px rgba(0,229,255,0.15)}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:all;background:radial-gradient(circle,rgba(0,0,0,0) 40%,rgba(0,0,0,0.6) 100%)}
+#msg-box{background:rgba(15,15,25,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);border-top:1px solid rgba(255,255,255,0.2);border-radius:24px;padding:40px 60px;color:#fff;text-align:center;display:none;max-width:440px;box-shadow:0 30px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,229,255,0.1)}
+#msg-box h2{font-size:36px;margin-bottom:16px;font-weight:800;background:linear-gradient(135deg,#fff,#aaa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#msg-box p{font-size:16px;opacity:0.85;line-height:1.6;font-weight:400}
+#minimap{position:absolute;bottom:80px;right:24px;width:110px;height:110px;background:rgba(20,20,30,0.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+#minimap canvas{width:100%;height:100%}
+#controls-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:13px;font-weight:600;text-align:center;pointer-events:none;background:rgba(20,20,30,0.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:8px 20px;white-space:nowrap}
+#level-banner{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:48px;font-weight:800;text-align:center;pointer-events:none;display:none;text-shadow:0 0 30px rgba(0,229,255,0.8);letter-spacing:2px}
+#mobile-btns{position:absolute;bottom:60px;left:0;right:0;display:flex;justify-content:space-between;padding:0 24px;pointer-events:none}
+.dpad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px;pointer-events:all}
+.dbtn{background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;transition:all 0.1s}
+.dbtn:active,.dbtn.pressed{background:rgba(255,255,255,0.2);transform:scale(0.92)}
+.dbtn.empty{background:transparent;border:none;pointer-events:none;backdrop-filter:none}
+#jump-btn{width:76px;height:76px;background:rgba(0,229,255,0.15);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(0,229,255,0.4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;cursor:pointer;user-select:none;align-self:flex-end;pointer-events:all;-webkit-tap-highlight-color:transparent;touch-action:none;box-shadow:0 0 20px rgba(0,229,255,0.2);transition:all 0.1s}
+#jump-btn:active{background:rgba(0,229,255,0.3);transform:scale(0.92)}
+#dash-btn{width:60px;height:60px;background:rgba(255,100,50,0.15);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,100,50,0.4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;user-select:none;align-self:flex-end;margin-bottom:12px;pointer-events:all;-webkit-tap-highlight-color:transparent;touch-action:none;box-shadow:0 0 20px rgba(255,100,50,0.2);transition:all 0.1s}
+#dash-btn:active{background:rgba(255,100,50,0.3);transform:scale(0.92)}
+.right-btns{display:flex;flex-direction:column;align-items:center;gap:8px}
+#dash-btn{position:relative}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<a href="/" id="home-btn" style="position:absolute;top:20px;left:24px;background:rgba(20,20,30,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 16px;color:#fff;font-size:16px;text-decoration:none;font-weight:bold;z-index:200;pointer-events:all;box-shadow:0 4px 15px rgba(0,0,0,0.3); transition:all 0.2s;">🏠 HOME</a>
+<div id="hud" style="margin-top: 50px;">
+  <div class="hud-panel">⭐ <span class="hud-val" id="score">0</span></div>
+  <div class="hud-panel" style="flex-direction:column;gap:2px">
+    <div id="healthbar"></div>
+    <div style="font-size:11px;opacity:0.6;text-align:center">LIVES</div>
+  </div>
+  <div class="hud-panel">LV <span class="hud-val" id="level-num">1</span></div>
+</div>
+
+<div id="powerup-display">⚡ <span id="pu-name">Speed Boost</span> — <span id="pu-timer">8s</span></div>
+
+<div id="overlay"><div id="msg-box"><h2 id="msg-title"></h2><p id="msg-body"></p></div></div>
+<div id="level-banner"></div>
+<div id="leaderboard-ui" style="position:absolute;top:90px;right:24px;background:rgba(20,20,30,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;color:#fff;font-size:16px;display:none;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,0.3);pointer-events:none;z-index:100;"></div>
+<div id="timer-ui" style="position:absolute;top:80px;left:50%;transform:translateX(-50%);font-size:32px;font-weight:800;color:#fff;text-shadow:0 0 10px rgba(0,229,255,0.8);font-family:'Outfit',sans-serif;pointer-events:none;z-index:100;">0.00s</div>
+
+<div id="minimap"><canvas id="mm" width="90" height="90"></canvas></div>
+<div id="controls-hint">WASD / Arrows — Move &nbsp;|&nbsp; SPACE — Jump (double!) &nbsp;|&nbsp; SHIFT — Dash &nbsp;|&nbsp; Click & Move Mouse — Camera &nbsp;|&nbsp; R — Restart</div>
+
+<div id="mobile-btns">
+  <div class="dpad">
+    <div class="dbtn empty"></div>
+    <div class="dbtn" id="mb-up">▲</div>
+    <div class="dbtn empty"></div>
+    <div class="dbtn" id="mb-left">◀</div>
+    <div class="dbtn empty" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px"></div>
+    <div class="dbtn" id="mb-right">▶</div>
+    <div class="dbtn empty"></div>
+    <div class="dbtn" id="mb-down">▼</div>
+    <div class="dbtn empty"></div>
+  </div>
+  <div class="right-btns">
+    <div id="dash-btn">💨</div>
+    <div id="jump-btn">↑</div>
+  </div>
+</div>
+
+<!-- Socket.IO & Three.js CDN -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="lib/three.min.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  RENDERER SETUP
+// ══════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+// ══════════════════════════════════════════════════════
+//  SCENE & CAMERA
+// ══════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x050510, 0.015);
+scene.background = new THREE.Color(0x030308);
+
+const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 250);
+camera.position.set(0, 8, 14);
+resize();
+
+// ══════════════════════════════════════════════════════
+//  LIGHTING
+// ══════════════════════════════════════════════════════
+scene.add(new THREE.AmbientLight(0x2a2a40, 0.8));
+
+const sun = new THREE.DirectionalLight(0xfff5e6, 1.8);
+sun.position.set(20, 40, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left   = -50;
+sun.shadow.camera.right  =  50;
+sun.shadow.camera.top    =  50;
+sun.shadow.camera.bottom = -50;
+sun.shadow.camera.far    = 150;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+const rim = new THREE.DirectionalLight(0x00e5ff, 0.6);
+rim.position.set(-20, 10, -20);
+scene.add(rim);
+
+// ══════════════════════════════════════════════════════
+//  STAR FIELD
+// ══════════════════════════════════════════════════════
+(function() {
+  const g = new THREE.BufferGeometry(), p = [];
+  for (let i = 0; i < 1200; i++)
+    p.push((Math.random() - .5) * 300, Math.random() * 80 + 5, (Math.random() - .5) * 300);
+  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.22, sizeAttenuation: true })));
+})();
+
+// ══════════════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════════════
+const urlParams = new URLSearchParams(window.location.search);
+const playerName = urlParams.get('name') || 'Guest' + Math.floor(Math.random() * 1000);
+let curLevel = parseInt(urlParams.get('level')) || 1;
+const roomCode = urlParams.get('room') || '';
+
+let score = 0, lives = 3;
+let gameOver = false, won = false, levelTransition = false;
+let dashCooldown = 0, dashActive = 0, invincible = 0, powerupTimer = 0;
+let startTime = 0;
+let raceFinished = false;
+
+// Analytics & Ghosts
+let recordedRun = [];
+let ghostRun = null;
+let ghostMesh = null;
+let ghostIndex = 0;
+
+// Socket.io
+const socket = io();
+const remotePlayers = {};
+const otherPlayersGroup = new THREE.Group();
+
+socket.emit('join_level', { name: playerName, level: curLevel, room: roomCode });
+
+socket.on('player_joined', (p) => { addRemotePlayer(p); });
+socket.on('current_players', (players) => { players.forEach(addRemotePlayer); });
+socket.on('player_left', (id) => { removeRemotePlayer(id); });
+socket.on('player_moved', (state) => { updateRemotePlayer(state); });
+socket.on('leaderboard_update', (lb) => { updateLeaderboardUI(lb); });
+
+function addRemotePlayer(p) {
+  if (remotePlayers[p.id]) return;
+  const mat = new THREE.MeshStandardMaterial({ color: p.color, emissive: p.color, emissiveIntensity: 0.2 });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.88, 0.72), mat);
+  mesh.position.set(p.x, p.y, p.z);
+  otherPlayersGroup.add(mesh);
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 32px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(p.name, 128, 48);
+  const tex = new THREE.CanvasTexture(canvas);
+  const spriteMat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.position.y = 1.2;
+  sprite.scale.set(2, 0.5, 1);
+  mesh.add(sprite);
+
+  remotePlayers[p.id] = { mesh, targetPos: new THREE.Vector3(p.x, p.y, p.z), targetRot: p.rotY };
+}
+
+function removeRemotePlayer(id) {
+  if (remotePlayers[id]) {
+    otherPlayersGroup.remove(remotePlayers[id].mesh);
+    delete remotePlayers[id];
+  }
+}
+
+function updateRemotePlayer(state) {
+  if (remotePlayers[state.id]) {
+    remotePlayers[state.id].targetPos.set(state.x, state.y, state.z);
+    remotePlayers[state.id].targetRot = state.rotY;
+  }
+}
+
+function updateLeaderboardUI(lb) {
+    let html = '<h3>🏆 Level ' + curLevel + ' Leaderboard</h3><br>';
+    lb.forEach((entry, i) => {
+        html += `<div>${i + 1}. <b>${entry.name}</b> - ${entry.time}s</div>`;
+    });
+    const lbDiv = document.getElementById('leaderboard-ui');
+    if(lbDiv) lbDiv.innerHTML = html;
+}
+let currentPowerup = null;
+const TOTAL_LEVELS = 10;
+
+// ══════════════════════════════════════════════════════
+//  REGISTRIES
+// ══════════════════════════════════════════════════════
+const platforms = [], coins = [], enemies = [], powerups = [], particles = [], removables = [], checkpoints = [];
+let spawnPoint = new THREE.Vector3(0, 1.5, 0);
+
+function clearLevel() {
+  removables.forEach(o => scene.remove(o));
+  removables.length = 0;
+  platforms.length = 0; coins.length = 0;
+  enemies.length = 0; powerups.length = 0; particles.length = 0;
+  checkpoints.length = 0;
+}
+function addR(obj) { removables.push(obj); scene.add(obj); return obj; }
+
+// ══════════════════════════════════════════════════════
+//  MATERIALS
+// ══════════════════════════════════════════════════════
+const PLAT_COLORS = [0x00cec9, 0x6c5ce7, 0xff7675, 0xfdcba4, 0x00b894, 0xe84393, 0x0984e3, 0xff9f43];
+const platMats = PLAT_COLORS.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.1 }));
+const coinMat  = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.6, roughness: 0.2, metalness: 0.8 });
+const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x440000, emissiveIntensity: 0.8, roughness: 0.6, metalness: 0.1 });
+const goalMat  = new THREE.MeshStandardMaterial({ color: 0x00ff88, emissive: 0x00aa44, emissiveIntensity: 0.8, roughness: 0.4, metalness: 0.2 });
+
+// ══════════════════════════════════════════════════════
+//  BUILDERS
+// ══════════════════════════════════════════════════════
+function makePlat(x, y, z, w, d, mi = 0, opts = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.55, d), platMats[mi % platMats.length]);
+  m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  addR(m);
+  const p = { mesh: m, x, y, z, w, d, ...opts };
+  if (opts.moveAxis) { p.t = Math.random() * Math.PI * 2; p.origX = x; p.origY = y; p.origZ = z; }
+  platforms.push(p);
+  return p;
+}
+
+function makeCoin(x, y, z) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.09, 16), coinMat);
+  m.position.set(x, y, z); m.rotation.x = Math.PI / 2; m.castShadow = true;
+  addR(m);
+  coins.push({ mesh: m, collected: false, origY: y });
+}
+
+function makeEnemy(x, y, z, range = 2, speed = 1.2) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), enemyMat);
+  m.position.set(x, y, z); m.castShadow = true;
+  const eyeG = new THREE.SphereGeometry(0.1, 8, 8);
+  const eyeM = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaaaa00, roughness: 0.2 });
+  [-0.18, 0.18].forEach(ex => { const e = new THREE.Mesh(eyeG, eyeM); e.position.set(ex, 0.1, 0.36); m.add(e); });
+  addR(m);
+  enemies.push({ mesh: m, origX: x, origZ: z, range, speed, t: Math.random() * Math.PI * 2, alive: true });
+}
+
+function makePowerup(x, y, z, type = 'speed') {
+  const colors = { speed: 0x00e5ff, jump: 0xff00ff, shield: 0x00ff88, life: 0xff0033 };
+  const mat = new THREE.MeshStandardMaterial({ color: colors[type] || 0xffffff, emissive: colors[type] || 0xffffff, emissiveIntensity: 0.8, roughness: 0.2, metalness: 0.5 });
+  const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), mat);
+  m.position.set(x, y, z); m.castShadow = true;
+  addR(m);
+  powerups.push({ mesh: m, collected: false, type, origY: y });
+}
+
+function makeCheckpoint(x, y, z) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 }));
+  m.position.set(x, y, z); m.castShadow = true; addR(m);
+  const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), new THREE.MeshStandardMaterial({ color: 0x00aaff, emissive: 0x00aaff, emissiveIntensity: 0.4, wireframe: true }));
+  core.position.set(x, y + 0.6, z); addR(core);
+  checkpoints.push({ mesh: core, base: m, x, y, z, active: false });
+}
+
+let goalPos = new THREE.Vector3();
+function makeGoalMarker(x, y, z) {
+  goalPos.set(x, y, z);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 4, 8), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 }));
+  pole.position.set(x, y + 0.5, z); addR(pole);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.06), goalMat);
+  flag.position.set(x + 0.48, y + 2.4, z); addR(flag);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.08, 8, 32), new THREE.MeshStandardMaterial({ color: 0x00ff88, emissive: 0x00ff88, emissiveIntensity: 0.8, roughness: 0.2 }));
+  ring.position.set(x, y - 0.2, z); ring.rotation.x = Math.PI / 2; addR(ring);
+}
+
+// ══════════════════════════════════════════════════════
+//  LEVELS
+// ══════════════════════════════════════════════════════
+const LEVELS = [
+  // ── LEVEL 1: Tutorial Island
+  function() {
+    makePlat(0, 0, 0, 14, 10, 0);
+    makePlat(8, 1.5, -3, 4, 3, 1);
+    makePlat(15, 3, -6, 5, 3, 2);
+    makePlat(20, 5, -11, 4, 3, 3);
+    makePlat(14, 7, -16, 4, 3, 4);
+    makePlat(7, 9, -20, 5, 3, 1);
+    makePlat(0, 11, -24, 6, 4, 0);
+    makePlat(-7, 13, -20, 4, 3, 5);
+    makePlat(-14, 15, -15, 4, 3, 2);
+    makePlat(-19, 17, -9, 5, 3, 3);
+    makePlat(-13, 19, -3, 4, 3, 1);
+    makePlat(-6, 21, 2, 5, 5, 0);
+    [[8,3,-3],[15,5,-6],[20,7,-11],[14,9,-16],[7,11,-20],[0,13,-24],
+     [-7,15,-20],[-14,17,-15],[-19,19,-9],[-13,21,-3],[-6,23,2],
+     [2,2,0],[-2,1.5,0],[10,3,-4],[17,5,-8]].forEach(([x,y,z]) => makeCoin(x,y,z));
+    makePowerup(0, 1.5, 0, 'speed');
+    makePowerup(14, 9, -16, 'jump');
+    makeEnemy(15, 3.8, -6, 1.5, 1.0);
+    makeEnemy(-14, 15.8, -15, 1.5, 1.2);
+    makeCheckpoint(7, 9.5, -20);
+    makeGoalMarker(-6, 24, 2);
+  },
+  // ── LEVEL 2: Moving Platforms
+  function() {
+    makePlat(0, 0, 0, 12, 8, 2);
+    makePlat(8, 2, -4, 4, 4, 3, { moveAxis:'x', moveDist:2.5, moveSpeed:1.0 });
+    makePlat(16, 4, -8, 4, 4, 5, { moveAxis:'z', moveDist:2.5, moveSpeed:0.8 });
+    makePlat(22, 7, -13, 5, 4, 1);
+    makePlat(16, 10, -18, 4, 4, 4, { moveAxis:'x', moveDist:3, moveSpeed:1.2 });
+    makePlat(8, 13, -22, 5, 4, 2);
+    makePlat(0, 16, -26, 5, 5, 3, { moveAxis:'x', moveDist:2.5, moveSpeed:1.1 });
+    makePlat(-8, 19, -22, 4, 4, 1);
+    makePlat(-16, 22, -16, 5, 4, 5, { moveAxis:'z', moveDist:2.5, moveSpeed:1.0 });
+    makePlat(-10, 25, -10, 5, 3, 2);
+    makePlat(-4, 28, -4, 6, 6, 0);
+    [[8,4,-4],[16,6,-8],[22,9,-13],[16,12,-18],[8,15,-22],[0,18,-26],
+     [-8,21,-22],[-16,24,-16],[-10,27,-10],[-4,30,-4],[2,2,0],[10,4,-5],[18,6,-9]].forEach(([x,y,z]) => makeCoin(x,y,z));
+    makePowerup(22, 9, -13, 'shield');
+    makePowerup(8, 15, -22, 'jump');
+    makePowerup(0, 18, -26, 'life');
+    makeEnemy(22, 7.8, -13, 1.5, 0.8);
+    makeEnemy(-8, 19.8, -22, 1.5, 1.0);
+    makeEnemy(-16, 22.8, -16, 1.5, 0.8);
+    makeCheckpoint(8, 13.5, -22);
+    makeGoalMarker(-4, 31, -4);
+  },
+  // ── LEVEL 3: Sky Fortress
+  function() {
+    makePlat(0, 0, 0, 10, 8, 5);
+    makePlat(7, 2, -4, 3, 3, 3, { moveAxis:'x', moveDist:4, moveSpeed:2 });
+    makePlat(14, 5, -9, 3, 3, 1, { moveAxis:'z', moveDist:4, moveSpeed:2.2 });
+    makePlat(20, 9, -15, 3, 3, 4, { moveAxis:'x', moveDist:5, moveSpeed:2.5 });
+    makePlat(14, 13, -21, 3, 3, 2, { moveAxis:'z', moveDist:3, moveSpeed:2 });
+    makePlat(7, 17, -25, 4, 3, 5);
+    makePlat(0, 21, -29, 3, 3, 1, { moveAxis:'x', moveDist:4, moveSpeed:2.8 });
+    makePlat(-7, 25, -25, 3, 3, 3, { moveAxis:'z', moveDist:3, moveSpeed:2.2 });
+    makePlat(-14, 29, -19, 3, 3, 4, { moveAxis:'x', moveDist:5, moveSpeed:3 });
+    makePlat(-20, 33, -13, 4, 3, 2);
+    makePlat(-14, 37, -7, 3, 3, 1, { moveAxis:'z', moveDist:3, moveSpeed:2.5 });
+    makePlat(-7, 41, -1, 6, 6, 0);
+    [[7,4,-4],[14,7,-9],[20,11,-15],[14,15,-21],[7,19,-25],[0,23,-29],
+     [-7,27,-25],[-14,31,-19],[-20,35,-13],[-14,39,-7],[-7,43,-1],[2,2,0],[9,4,-5]].forEach(([x,y,z]) => makeCoin(x,y,z));
+    makePowerup(7, 19, -25, 'speed');
+    makePowerup(-20, 35, -13, 'shield');
+    makePowerup(-14, 39, -7, 'jump');
+    makePowerup(0, 23, -29, 'life');
+    makeEnemy(14, 5.8, -9, 2, 2);
+    makeEnemy(14, 13.8, -21, 2, 2);
+    makeEnemy(0, 21.8, -29, 2, 2.5);
+    makeEnemy(-14, 29.8, -19, 2, 2.2);
+    makeEnemy(-14, 37.8, -7, 2, 2.8);
+    makeCheckpoint(7, 17.5, -25);
+    makeGoalMarker(-7, 44, -1);
+  },
+  // ── LEVEL 4: Lava Keep
+  function() {
+    makePlat(0, 0, 0, 8, 8, 2);
+    // Path 1: small moving platforms
+    makePlat(6, 0, -5, 2, 2, 3, { moveAxis:'z', moveDist:3, moveSpeed:2 });
+    makePlat(12, 0, -10, 2, 2, 4, { moveAxis:'z', moveDist:4, moveSpeed:2.5 });
+    makePlat(18, 0, -15, 2, 2, 5, { moveAxis:'z', moveDist:3, moveSpeed:3 });
+    // Midpoint
+    makePlat(24, 2, -20, 6, 6, 0);
+    // Path 2: height challenge
+    makePlat(18, 5, -25, 3, 3, 1, { moveAxis:'x', moveDist:4, moveSpeed:2 });
+    makePlat(12, 8, -30, 2, 2, 2, { moveAxis:'y', moveDist:3, moveSpeed:2.5 });
+    makePlat(6, 11, -35, 3, 3, 3, { moveAxis:'x', moveDist:5, moveSpeed:2 });
+    // Checkpoint area
+    makePlat(0, 14, -40, 6, 6, 4);
+    // Path 3: Fast moving and enemies
+    makePlat(-8, 14, -40, 3, 3, 5, { moveAxis:'z', moveDist:6, moveSpeed:3.5 });
+    makePlat(-16, 14, -40, 3, 3, 6, { moveAxis:'z', moveDist:6, moveSpeed:4 });
+    makePlat(-24, 16, -45, 6, 6, 7);
+    
+    [[6,1,-5],[12,1,-10],[18,1,-15], [18,6,-25],[12,10,-30],[6,12,-35], [-8,15,-40],[-16,15,-40],[-24,17,-45]].forEach(([x,y,z]) => makeCoin(x,y,z));
+    
+    makePowerup(24, 3, -20, 'shield');
+    makePowerup(0, 15, -40, 'speed');
+    makePowerup(-16, 16, -40, 'life');
+    
+    makeEnemy(24, 2.8, -20, 1.5, 2.5);
+    makeEnemy(0, 14.8, -40, 2, 3);
+    makeEnemy(-24, 16.8, -45, 2, 2.5);
+    makeEnemy(-24, 16.8, -44, 2, 2.5);
+    makeCheckpoint(0, 14.5, -40);
+
+    makeGoalMarker(-24, 17, -48);
+  },
+  // ── LEVEL 5: The Gauntlet
+  function() {
+    makePlat(0, 0, 0, 8, 8, 6);
+    // Speedy dash section
+    makePlat(0, 0, -12, 4, 4, 7);
+    makePlat(0, 0, -24, 4, 4, 0);
+    makePlat(0, 0, -36, 4, 4, 1);
+    
+    // Vertical climb
+    makePlat(6, 4, -36, 3, 3, 2, { moveAxis:'y', moveDist:3, moveSpeed:2 });
+    makePlat(12, 8, -36, 3, 3, 3, { moveAxis:'y', moveDist:4, moveSpeed:2.5 });
+    makePlat(18, 12, -36, 3, 3, 4, { moveAxis:'y', moveDist:3, moveSpeed:3 });
+    
+    // Rest area
+    makePlat(24, 15, -36, 6, 6, 5);
+    
+    // Zig-zag fast moving
+    makePlat(24, 15, -26, 3, 3, 6, { moveAxis:'x', moveDist:5, moveSpeed:3.5 });
+    makePlat(24, 15, -16, 3, 3, 7, { moveAxis:'x', moveDist:6, moveSpeed:4 });
+    makePlat(24, 15, -6, 3, 3, 0, { moveAxis:'x', moveDist:7, moveSpeed:4.5 });
+    
+    // Final ascent
+    makePlat(16, 18, -6, 4, 4, 1);
+    makePlat(8, 21, -6, 3, 3, 2);
+    makePlat(0, 24, -6, 6, 6, 3);
+
+    [[0,1,-12],[0,1,-24],[0,1,-36], [6,5,-36],[12,9,-36],[18,13,-36], [24,16,-26],[24,16,-16],[24,16,-6], [16,19,-6],[8,22,-6],[0,25,-6]].forEach(([x,y,z]) => makeCoin(x,y,z));
+    
+    makePowerup(0, 1, 0, 'speed');
+    makePowerup(24, 16, -36, 'jump');
+    makePowerup(8, 23, -6, 'life');
+    
+    makeEnemy(0, 0.8, -12, 1, 3);
+    makeEnemy(0, 0.8, -24, 1, 3);
+    makeEnemy(24, 15.8, -36, 2, 3.5);
+    makeEnemy(16, 18.8, -6, 1, 2);
+    makeEnemy(0, 24.8, -6, 2, 4);
+    makeCheckpoint(24, 15.5, -36);
+
+    makeGoalMarker(0, 25, -6);
+  },
+  // ── LEVEL 6: Crossroads
+  function() {
+    makePlat(0, 0, 0, 8, 8, 2);
+    makePlat(0, 0, -10, 4, 4, 3, { moveAxis:'x', moveDist:6, moveSpeed:2 });
+    makePlat(-10, 0, -10, 4, 4, 4, { moveAxis:'z', moveDist:6, moveSpeed:2 });
+    makePlat(10, 0, -10, 4, 4, 5, { moveAxis:'z', moveDist:6, moveSpeed:2 });
+    makePlat(0, 0, -20, 6, 6, 6);
+    makePlat(0, 3, -30, 4, 4, 7, { moveAxis:'y', moveDist:3, moveSpeed:2 });
+    makePlat(0, 6, -40, 6, 6, 0);
+    [[0,1,-10],[-10,1,-10],[10,1,-10],[0,1,-20],[0,4,-30],[0,7,-40]].forEach(([x,y,z]) => makeCoin(x,y,z));
+    makeEnemy(0, 0.8, -20, 2, 2);
+    makeEnemy(0, 6.8, -40, 2, 2.5);
+    makeCheckpoint(0, 0.5, -20);
+    makePowerup(0, 7, -40, 'life');
+    makePowerup(-10, 2, -10, 'life');
+    makePowerup(10, 2, -10, 'life');
+    makeGoalMarker(0, 7, -45);
+  },
+  // ── LEVEL 7: Enemy Territory
+  function() {
+    makePlat(0, 0, 0, 8, 8, 1);
+    makePlat(0, 2, -15, 12, 12, 2);
+    makePlat(0, 4, -30, 12, 12, 3);
+    makePlat(0, 6, -45, 8, 8, 4);
+    for(let i=0; i<4; i++) makeEnemy(0, 2.8, -15, 4, 2 + i*0.5);
+    for(let i=0; i<5; i++) makeEnemy(0, 4.8, -30, 4, 2.5 + i*0.5);
+    makePowerup(0, 3, -15, 'shield');
+    makePowerup(0, 5, -30, 'life');
+    makePowerup(4, 3, -15, 'life');
+    makePowerup(-4, 3, -15, 'life');
+    makeCheckpoint(0, 2.5, -15);
+    makeGoalMarker(0, 7, -45);
+  },
+  // ── LEVEL 8: The Elevator
+  function() {
+    makePlat(0, 0, 0, 8, 8, 5);
+    makePlat(0, 4, -8, 4, 4, 6, { moveAxis:'y', moveDist:4, moveSpeed:2 });
+    makePlat(0, 12, -16, 4, 4, 7, { moveAxis:'y', moveDist:4, moveSpeed:2 });
+    makePlat(0, 20, -24, 4, 4, 0, { moveAxis:'y', moveDist:4, moveSpeed:2 });
+    makePlat(0, 28, -32, 6, 6, 1);
+    makePowerup(0, 29, -32, 'jump');
+    makePowerup(0, 13, -16, 'life');
+    makePowerup(0, 21, -24, 'life');
+    makeCheckpoint(0, 20.5, -24);
+    makeGoalMarker(0, 29, -32);
+  },
+  // ── LEVEL 9: Precision
+  function() {
+    makePlat(0, 0, 0, 6, 6, 2);
+    makePlat(0, 0, -15, 2, 2, 3);
+    makePlat(0, 0, -30, 2, 2, 4);
+    makePlat(0, 0, -45, 2, 2, 5);
+    makePlat(0, 0, -60, 6, 6, 6);
+    makeEnemy(0, 0.8, -15, 0.5, 3);
+    makeEnemy(0, 0.8, -30, 0.5, 3);
+    makeEnemy(0, 0.8, -45, 0.5, 3);
+    makePowerup(0, 1, -30, 'shield');
+    makePowerup(0, 1, -15, 'life');
+    makePowerup(0, 1, -45, 'life');
+    makeCheckpoint(0, 0.5, -30);
+    makeGoalMarker(0, 1, -60);
+  },
+  // ── LEVEL 10: The Final Test
+  function() {
+    makePlat(0, 0, 0, 6, 6, 0);
+    makePlat(8, 2, -10, 3, 3, 1, { moveAxis:'x', moveDist:6, moveSpeed:3.5 });
+    makePlat(-8, 4, -20, 3, 3, 2, { moveAxis:'x', moveDist:6, moveSpeed:4.0 });
+    makePlat(0, 6, -30, 8, 8, 3);
+    makeEnemy(0, 6.8, -30, 3, 4);
+    makeEnemy(2, 6.8, -30, 3, 3);
+    makeCheckpoint(0, 6.5, -30);
+    makePlat(0, 8, -45, 2, 2, 4, { moveAxis:'z', moveDist:5, moveSpeed:4.5 });
+    makePlat(0, 10, -60, 2, 2, 5, { moveAxis:'y', moveDist:4, moveSpeed:3.0 });
+    makePlat(0, 12, -75, 6, 6, 6);
+    makePowerup(0, 7, -30, 'life');
+    makePowerup(8, 3, -10, 'life');
+    makePowerup(-8, 5, -20, 'life');
+    makePowerup(0, 9, -45, 'life');
+    makeGoalMarker(0, 13, -75);
+  }
+];
+
+// ══════════════════════════════════════════════════════
+//  PLAYER
+// ══════════════════════════════════════════════════════
+const playerMat = new THREE.MeshStandardMaterial({ color: 0x00cfff, emissive: 0x003355, emissiveIntensity: 0.4, roughness: 0.2, metalness: 0.6 });
+const player = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.88, 0.72), playerMat);
+player.castShadow = true;
+scene.add(player);
+scene.add(otherPlayersGroup);
+
+// Eyes
+const eyeG = new THREE.SphereGeometry(0.1, 8, 8);
+const eyeM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
+const pupM = new THREE.MeshStandardMaterial({ color: 0x001133, roughness: 0.1 });
+[-0.19, 0.19].forEach(ex => {
+  const e = new THREE.Mesh(eyeG, eyeM); e.position.set(ex, 0.12, 0.37); player.add(e);
+  const p = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), pupM); p.position.set(0, 0, 0.06); e.add(p);
+});
+
+// ══════════════════════════════════════════════════════
+//  PHYSICS CONSTANTS
+// ══════════════════════════════════════════════════════
+const GRAVITY   = -24;
+const JUMP      = 9.5;
+const DJUMP     = 8.5;
+const SPEED     = 6.5;
+const DASH_SPEED = 18;
+const DASH_DUR  = 0.15;
+
+const vel = new THREE.Vector3();
+let onGround = false, jumpsLeft = 2;
+let camYaw = 0, camDist = 13, camHeight = 6;
+
+// ══════════════════════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════════════════════
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space' && !gameOver && !won) tryJump();
+  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !gameOver && !won) tryDash();
+  if (e.code === 'KeyR') { if(raceFinished) { window.location.href='/'; } else { restartGame(); } }
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+}, { passive: false });
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// Mouse camera drag (Pointer Lock)
+canvas.addEventListener('click', () => canvas.requestPointerLock());
+document.addEventListener('mousemove', e => {
+  if (document.pointerLockElement === canvas) {
+    camYaw -= e.movementX * 0.003;
+  }
+});
+canvas.addEventListener('wheel', e => {
+  camDist = Math.max(6, Math.min(20, camDist + e.deltaY * 0.01));
+}, { passive: true });
+
+// Mobile buttons
+function mbBind(id, code) {
+  const el = document.getElementById(id); if (!el) return;
+  el.addEventListener('touchstart', e => { keys[code] = true; e.preventDefault(); }, { passive: false });
+  el.addEventListener('touchend',   e => { keys[code] = false; e.preventDefault(); }, { passive: false });
+  el.addEventListener('mousedown', e => { keys[code] = true; });
+  el.addEventListener('mouseup', e => { keys[code] = false; });
+  el.addEventListener('mouseleave', e => { keys[code] = false; });
+}
+mbBind('mb-up','ArrowUp'); mbBind('mb-down','ArrowDown');
+mbBind('mb-left','ArrowLeft'); mbBind('mb-right','ArrowRight');
+document.getElementById('jump-btn').addEventListener('touchstart', e => { tryJump(); e.preventDefault(); }, { passive: false });
+document.getElementById('dash-btn').addEventListener('touchstart', e => { tryDash(); e.preventDefault(); }, { passive: false });
+document.getElementById('jump-btn').addEventListener('mousedown', e => { tryJump(); });
+document.getElementById('dash-btn').addEventListener('mousedown', e => { tryDash(); });
+
+// ══════════════════════════════════════════════════════
+//  ACTIONS
+// ══════════════════════════════════════════════════════
+function tryJump() {
+  if (gameOver || won) return;
+  if (jumpsLeft > 0) {
+    vel.y = jumpsLeft === 2 ? JUMP : DJUMP;
+    jumpsLeft--;
+    // squash & stretch
+    player.scale.set(1.2, 0.7, 1.2);
+    setTimeout(() => player.scale.set(0.85, 1.3, 0.85), 80);
+    setTimeout(() => player.scale.set(1, 1, 1), 200);
+    spawnParticles(player.position.clone(), 0x88ddff, 6, 4);
+  }
+}
+
+function tryDash() {
+  if (dashCooldown > 0 || dashActive > 0) return;
+  dashActive = DASH_DUR; dashCooldown = 1.2;
+  playerMat.emissiveIntensity = 0.8;
+  spawnParticles(player.position.clone(), 0xffaa44, 10, 5);
+}
+
+// ══════════════════════════════════════════════════════
+//  PARTICLES
+// ══════════════════════════════════════════════════════
+const partGeo = new THREE.SphereGeometry(0.07, 4, 4);
+function spawnParticles(pos, color, n = 8, power = 3) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(partGeo, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6, roughness: 0.2 }));
+    m.position.copy(pos);
+    const v = new THREE.Vector3(
+      (Math.random() - .5) * power,
+      (Math.random() * 2 + 1) * power * 0.4,
+      (Math.random() - .5) * power
+    );
+    scene.add(m);
+    particles.push({ mesh: m, vel: v, life: 0.6, maxLife: 0.6 });
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  HUD
+// ══════════════════════════════════════════════════════
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('level-num').textContent = curLevel;
+  const hb = document.getElementById('healthbar'); hb.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const h = document.createElement('span');
+    h.className = 'heart' + (i >= lives ? ' empty' : '');
+    h.textContent = '❤️'; hb.appendChild(h);
+  }
+}
+
+// ── Minimap
+const mm = document.getElementById('mm').getContext('2d');
+function drawMinimap() {
+  mm.clearRect(0, 0, 90, 90);
+  mm.fillStyle = 'rgba(0,0,0,0.4)'; mm.fillRect(0, 0, 90, 90);
+  const cx = 45, cy = 45, scale = 1.5;
+  const px = player.position.x, pz = player.position.z;
+  platforms.forEach(p => {
+    mm.fillStyle = 'rgba(100,150,255,0.4)';
+    mm.fillRect(cx+(p.x-px)/scale - p.w/scale/2, cy+(p.z-pz)/scale - p.d/scale/2, p.w/scale, p.d/scale);
+  });
+  coins.filter(c => !c.collected).forEach(c => {
+    mm.fillStyle = '#ffd700'; mm.beginPath();
+    mm.arc(cx+(c.mesh.position.x-px)/scale, cy+(c.mesh.position.z-pz)/scale, 2, 0, Math.PI*2); mm.fill();
+  });
+  enemies.filter(e => e.alive).forEach(e => {
+    mm.fillStyle = '#ff4444'; mm.beginPath();
+    mm.arc(cx+(e.mesh.position.x-px)/scale, cy+(e.mesh.position.z-pz)/scale, 3, 0, Math.PI*2); mm.fill();
+  });
+  mm.fillStyle = '#00cfff'; mm.beginPath(); mm.arc(cx, cy, 4, 0, Math.PI*2); mm.fill();
+  mm.strokeStyle = 'rgba(0,200,255,0.8)'; mm.lineWidth = 1.5; mm.stroke();
+  mm.fillStyle = '#00ff88'; mm.beginPath();
+  mm.arc(cx+(goalPos.x-px)/scale, cy+(goalPos.z-pz)/scale, 4, 0, Math.PI*2); mm.fill();
+}
+
+// ── Messages
+function showMsg(title, body) {
+  document.exitPointerLock();
+  document.getElementById('msg-title').innerHTML = title;
+  document.getElementById('msg-body').innerHTML = body;
+  document.getElementById('msg-box').style.display = 'block';
+}
+function hideMsg() { 
+  document.getElementById('msg-box').style.display = 'none'; 
+  document.getElementById('overlay').style.pointerEvents = 'none';
+}
+
+function showBanner(text, dur = 2000) {
+  const b = document.getElementById('level-banner');
+  b.innerHTML = text; b.style.display = 'block'; b.style.opacity = '1';
+  b.style.transition = 'opacity 0.5s';
+  setTimeout(() => { b.style.opacity = '0'; setTimeout(() => b.style.display = 'none', 500); }, dur);
+}
+
+// ══════════════════════════════════════════════════════
+//  LOAD LEVEL
+// ══════════════════════════════════════════════════════
+function loadLevel(n) {
+  clearLevel();
+  levelTransition = false;
+  raceFinished = false;
+  document.getElementById('timer-ui').style.display = 'none';
+  if (window.gameStarted) {
+      startTime = Date.now();
+  } else {
+      startTime = 0;
+  }
+  recordedRun = [];
+  ghostRun = null;
+  
+  // Fetch ghost
+  fetch('/api/ghosts/' + n).then(r=>r.json()).then(data => {
+    if(data && data.run_data) {
+        ghostRun = data.run_data;
+        ghostIndex = 0;
+        if(!ghostMesh) {
+            const mat = new THREE.MeshStandardMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5, emissive: 0x00ff00, emissiveIntensity: 0.5, depthTest: false });
+            ghostMesh = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.88, 0.72), mat);
+            scene.add(ghostMesh);
+            const lbl = document.createElement('canvas'); lbl.width = 256; lbl.height = 64;
+            const ctx = lbl.getContext('2d'); ctx.fillStyle = '#00ff00'; ctx.font = 'bold 32px Arial'; ctx.textAlign = 'center'; ctx.fillText('👻 ' + data.name, 128, 48);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(lbl), depthTest: false }));
+            sprite.position.y = 1.2; sprite.scale.set(2, 0.5, 1); ghostMesh.add(sprite);
+        }
+        ghostMesh.position.set(ghostRun[0].x, ghostRun[0].y, ghostRun[0].z);
+        ghostMesh.visible = true;
+    } else if (ghostMesh) {
+        ghostMesh.visible = false;
+    }
+  }).catch(e => console.log(e));
+
+  spawnPoint.set(0, 1.5, 0);
+  player.position.copy(spawnPoint); vel.set(0, 0, 0);
+  onGround = false; jumpsLeft = 2;
+  currentPowerup = null; powerupTimer = 0;
+  dashCooldown = 0; dashActive = 0; invincible = 0;
+  playerMat.color.set(0x00cfff); playerMat.emissiveIntensity = 0.3;
+  document.getElementById('powerup-display').style.display = 'none';
+  LEVELS[n - 1]();
+  updateHUD(); hideMsg();
+  showBanner('⚡ Level ' + n, 2200);
+  document.getElementById('leaderboard-ui').style.display = 'block';
+}
+
+function restartGame() {
+  if (won) { score = 0; curLevel = 1; won = false; }
+  lives = 3; gameOver = false;
+  loadLevel(curLevel);
+}
+
+// ══════════════════════════════════════════════════════
+//  MAIN LOOP
+// ══════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+const camPos  = new THREE.Vector3();
+const camLook = new THREE.Vector3();
+let t = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  t += dt;
+
+  Object.values(remotePlayers).forEach(rp => {
+      rp.mesh.position.lerp(rp.targetPos, 0.2);
+      rp.mesh.rotation.y = THREE.MathUtils.lerp(rp.mesh.rotation.y, rp.targetRot, 0.2);
+  });
+
+  if (gameOver || won) { renderer.render(scene, camera); return; }
+
+  if (!raceFinished && startTime > 0) {
+      document.getElementById('timer-ui').style.display = 'block';
+      document.getElementById('timer-ui').textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+      
+      // Record run
+      if (Math.floor(t * 10) % 2 === 0) { // Limit recording rate
+          recordedRun.push({ x: player.position.x, y: player.position.y, z: player.position.z, rotY: player.rotation.y });
+      }
+      
+      // Play ghost
+      if (ghostRun && ghostMesh && ghostRun[ghostIndex]) {
+          const gP = ghostRun[ghostIndex];
+          ghostMesh.position.lerp(new THREE.Vector3(gP.x, gP.y, gP.z), 0.3);
+          ghostMesh.rotation.y = THREE.MathUtils.lerp(ghostMesh.rotation.y, gP.rotY, 0.3);
+          if (Math.floor(t * 10) % 2 === 0) ghostIndex++;
+      }
+  }
+
+  // ── Moving platforms
+  platforms.forEach(p => {
+    if (!p.moveAxis) return;
+    p.t += dt * p.moveSpeed;
+    const d = Math.sin(p.t) * p.moveDist;
+    const prevD = Math.sin(p.t - dt * p.moveSpeed) * p.moveDist;
+    const delta = d - prevD;
+    
+    p.deltaX = 0; p.deltaY = 0; p.deltaZ = 0;
+    if (p.moveAxis === 'x') { p.mesh.position.x = p.origX + d; p.x = p.mesh.position.x; p.deltaX = delta; }
+    if (p.moveAxis === 'z') { p.mesh.position.z = p.origZ + d; p.z = p.mesh.position.z; p.deltaZ = delta; }
+    if (p.moveAxis === 'y') { p.mesh.position.y = p.origY + d; p.y = p.mesh.position.y; p.deltaY = delta; }
+  });
+
+  // ── Dash timer
+  if (dashActive > 0) {
+    dashActive -= dt;
+    const fwd = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw)).normalize();
+    vel.x = fwd.x * DASH_SPEED; vel.z = fwd.z * DASH_SPEED;
+    if (dashActive <= 0) playerMat.emissiveIntensity = 0.3;
+  }
+  if (dashCooldown > 0) dashCooldown -= dt;
+  if (invincible   > 0) invincible -= dt;
+  if (powerupTimer > 0) {
+    powerupTimer -= dt;
+    document.getElementById('pu-timer').textContent = Math.ceil(powerupTimer) + 's';
+    if (powerupTimer <= 0) {
+      currentPowerup = null; playerMat.color.set(0x00cfff);
+      document.getElementById('powerup-display').style.display = 'none';
+    }
+  }
+
+  // ── Player movement
+  const spd = currentPowerup === 'speed' ? SPEED * 1.7 : SPEED;
+  const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
+  const right   = new THREE.Vector3( Math.cos(camYaw), 0, -Math.sin(camYaw));
+  let mx = 0, mz = 0;
+  if (keys['ArrowLeft']  || keys['KeyA']) { mx -= right.x;   mz -= right.z;   }
+  if (keys['ArrowRight'] || keys['KeyD']) { mx += right.x;   mz += right.z;   }
+  if (keys['ArrowUp']    || keys['KeyW']) { mx += forward.x; mz += forward.z; }
+  if (keys['ArrowDown']  || keys['KeyS']) { mx -= forward.x; mz -= forward.z; }
+  const ml = Math.sqrt(mx*mx + mz*mz);
+  if (ml > 0) { mx /= ml; mz /= ml; }
+  if (dashActive <= 0) { vel.x = mx * spd; vel.z = mz * spd; }
+  vel.y += (currentPowerup === 'jump' ? GRAVITY * 0.65 : GRAVITY) * dt;
+  if (ml > 0.01) player.rotation.y = Math.atan2(mx, mz);
+
+  const pp = player.position;
+  const prevY = pp.y - vel.y * dt;
+  pp.x += vel.x * dt;
+  pp.y += vel.y * dt;
+  pp.z += vel.z * dt;
+
+  // ── Platform collision
+  onGround = false;
+  let standingOn = null;
+  platforms.forEach(p => {
+    const ptop = p.mesh.position.y + 0.28;
+    const inX  = pp.x > p.x - p.w/2 - 0.36 && pp.x < p.x + p.w/2 + 0.36;
+    const inZ  = pp.z > p.z - p.d/2 - 0.36 && pp.z < p.z + p.d/2 + 0.36;
+    if (inX && inZ && vel.y <= 0 && prevY - 0.44 >= ptop - 0.15 && pp.y - 0.44 < ptop + 0.15) {
+      pp.y = ptop + 0.44; vel.y = 0; onGround = true; jumpsLeft = 2;
+      standingOn = p;
+    }
+  });
+
+  if (onGround && standingOn && standingOn.moveAxis) {
+      pp.x += standingOn.deltaX;
+      pp.y += standingOn.deltaY;
+      pp.z += standingOn.deltaZ;
+  }
+
+  // ── Fall death
+  if (pp.y < -12) {
+    // Analytics
+    fetch('/api/analytics/death', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: curLevel, x: pp.x, z: pp.z })
+    });
+
+    if (currentPowerup === 'shield') {
+      currentPowerup = null; powerupTimer = 0; playerMat.color.set(0x00cfff);
+      document.getElementById('powerup-display').style.display = 'none';
+    } else {
+      lives--;
+      if (lives <= 0) { gameOver = true; showMsg('💀 Game Over', 'Score: ' + score + ' ⭐<br><br>Press <b>R</b> to try again'); updateHUD(); return; }
+      showBanner('💥 ' + lives + ' lives left!', 1500);
+    }
+    pp.copy(spawnPoint); vel.set(0, 0, 0); invincible = 1.5;
+    updateHUD();
+  }
+
+  // ── Coins
+  coins.forEach(c => {
+    if (c.collected) return;
+    c.mesh.rotation.z += dt * 2.8;
+    c.mesh.position.y = c.origY + Math.sin(t * 2.2) * 0.15;
+    if (pp.distanceTo(c.mesh.position) < 0.72) {
+      c.collected = true; scene.remove(c.mesh); score += 10;
+      spawnParticles(c.mesh.position.clone(), 0xffd700, 8, 3);
+      updateHUD();
+    }
+  });
+
+  // ── Checkpoints
+  checkpoints.forEach(cp => {
+    cp.mesh.rotation.y += dt * 1.5;
+    cp.mesh.position.y = cp.y + 0.6 + Math.sin(t * 2) * 0.1;
+    if (!cp.active && pp.distanceTo(cp.mesh.position) < 1.5) {
+      cp.active = true;
+      spawnPoint.set(cp.x, cp.y + 1.5, cp.z);
+      cp.mesh.material.color.set(0x00ff88);
+      cp.mesh.material.emissive.set(0x00ff88);
+      spawnParticles(cp.mesh.position.clone(), 0x00ff88, 12, 4);
+      showBanner('📍 Checkpoint!', 1500);
+    }
+  });
+
+  // ── Power-ups
+  const puColors = { speed: 0x00e5ff, jump: 0xff00ff, shield: 0x00ff88, life: 0xff0033 };
+  const puNames  = { speed: 'Speed Boost ⚡', jump: 'Super Jump 🚀', shield: 'Shield 🛡️', life: '+1 Life ❤️' };
+  powerups.forEach(pu => {
+    if (pu.collected) return;
+    pu.mesh.rotation.y += dt * 2; pu.mesh.rotation.x += dt * 1.5;
+    pu.mesh.position.y = pu.origY + Math.sin(t * 1.5) * 0.2;
+    if (pp.distanceTo(pu.mesh.position) < 0.9) {
+      pu.collected = true; scene.remove(pu.mesh);
+      if (pu.type === 'life') {
+        lives = Math.min(lives + 1, 6); // Cap at 6 lives
+        showBanner('❤️ +1 Life!', 1500);
+        updateHUD();
+        return;
+      }
+      currentPowerup = pu.type; powerupTimer = 8;
+      playerMat.color.set(puColors[pu.type] || 0x00cfff);
+      document.getElementById('pu-name').textContent = puNames[pu.type] || pu.type;
+      document.getElementById('powerup-display').style.display = 'block';
+      showBanner(puNames[pu.type] + ' (8s)!', 2000);
+    }
+  });
+
+  // ── Enemies
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    e.t += dt * e.speed;
+    e.mesh.position.x = e.origX + Math.sin(e.t) * e.range;
+    e.mesh.rotation.y += dt * 2;
+    if (invincible <= 0 && pp.distanceTo(e.mesh.position) < 0.9) {
+      if (vel.y < -1) { // stomp!
+        e.alive = false; scene.remove(e.mesh); score += 50;
+        spawnParticles(e.mesh.position.clone(), 0xff3333, 12, 5);
+        vel.y = JUMP * 0.7; jumpsLeft = 2;
+        showBanner('👟 Stomped! +50', 1200);
+        updateHUD();
+      } else if (currentPowerup === 'shield') {
+        e.alive = false; scene.remove(e.mesh);
+        spawnParticles(e.mesh.position.clone(), 0xff3333, 12, 5);
+        currentPowerup = null; powerupTimer = 0; playerMat.color.set(0x00cfff);
+        document.getElementById('powerup-display').style.display = 'none';
+      } else {
+        lives--; invincible = 2.0;
+        playerMat.emissive.set(0xff0000); playerMat.emissiveIntensity = 1;
+        setTimeout(() => { playerMat.emissive.set(0x003355); playerMat.emissiveIntensity = 0.3; }, 400);
+        if (lives <= 0) { gameOver = true; showMsg('💀 Game Over', 'Score: ' + score + ' ⭐<br><br>Press <b>R</b> to restart level'); updateHUD(); return; }
+        showBanner('😵 Hit! ' + lives + ' lives left', 1500);
+        updateHUD();
+      }
+    }
+  });
+
+  // ── Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt; p.vel.y += GRAVITY * 0.3 * dt;
+    p.mesh.position.x += p.vel.x * dt;
+    p.mesh.position.y += p.vel.y * dt;
+    p.mesh.position.z += p.vel.z * dt;
+    p.mesh.scale.setScalar(Math.max(0, p.life / p.maxLife));
+    if (p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
+  }
+
+  // ── Goal reached
+  if (!raceFinished && pp.distanceTo(goalPos) < 2.8) {
+    raceFinished = true;
+    const finishTime = ((Date.now() - startTime) / 1000).toFixed(2);
+    socket.emit('finish_race', { time: finishTime });
+    
+    // Save Ghost
+    fetch('/api/ghosts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: curLevel, name: playerName, time: parseFloat(finishTime), run_data: recordedRun })
+    });
+    
+    document.getElementById('leaderboard-ui').style.display = 'block';
+    showMsg('🎉 Finished!', `Your time: <b>${finishTime}s</b><br><br>You can stay and watch others, or <a href="/" style="color:#00e5ff;pointer-events:all">return to Home</a> to pick another level.`);
+  }
+
+  // ── Invincible flicker
+  player.visible = invincible <= 0 || Math.floor(invincible * 10) % 2 === 0;
+
+  // ── Network Emit
+  socket.emit('update_state', {
+      x: pp.x, y: pp.y, z: pp.z,
+      rotY: player.rotation.y,
+      anim: 'idle', color: playerMat.color.getHex()
+  });
+
+  // ── Camera smooth follow
+  camPos.set(
+    pp.x + Math.sin(camYaw) * camDist,
+    pp.y + camHeight,
+    pp.z + Math.cos(camYaw) * camDist
+  );
+  camera.position.lerp(camPos, 0.07);
+  camLook.set(pp.x, pp.y + 1.2, pp.z);
+  camera.lookAt(camLook);
+
+  drawMinimap();
+  renderer.render(scene, camera);
+}
+
+// ══════════════════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════════════════
+loadLevel(curLevel);
+showMsg(
+  `🎮 Welcome ${playerName}!`,
+  'Collect ⭐ coins &amp; reach the 🚩 green flag!<br><br>' +
+  '<b>WASD / Arrows</b> — Move<br>' +
+  '<b>SPACE</b> — Jump (double jump!)<br>' +
+  '<b>SHIFT</b> — Dash<br>' +
+  '<b>Click & Move Mouse</b> — Rotate camera<br>' +
+  '<b>Stomp</b> enemies from above for bonus!<br><br>' +
+  'Press <b>any key</b> to start!'
+);
+window.addEventListener('keydown', function start() {
+  hideMsg();
+  window.gameStarted = true;
+  startTime = Date.now();
+  window.removeEventListener('keydown', start);
+}, { once: true });
+
+animate();
+</script>
+</body>
+</html>

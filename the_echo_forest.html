@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Echo Forest</title>
+<style>
+    /* RESET & FONTS */
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Caveat:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+    
+    :root {
+        --forest-dark: #0a1a10;
+        --forest-mid: #0F4020;
+        --forest-accent: #1D9E75;
+        --forest-light: #9FE1CB;
+        --cottage-warm: #FAC775;
+        --paper: #F5EFE0;
+        --ink: #2C2C2A;
+        --spirit: #AFA9EC;
+    }
+
+    body {
+        background-color: #000;
+        color: var(--paper);
+        font-family: 'Cormorant Garamond', serif;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 18px;
+    }
+
+    /* CONTAINER */
+    #game-container {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        max-width: 100%;
+        max-height: 100%;
+        background: var(--forest-dark);
+        box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        overflow: hidden;
+        transition: filter 30s linear;
+    }
+    #game-container.night {
+        filter: hue-rotate(15deg) brightness(0.6) contrast(1.2);
+    }
+    #game-container.day {
+        filter: hue-rotate(0deg) brightness(1) contrast(1);
+    }
+
+    canvas {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 1;
+        cursor: pointer;
+    }
+
+    /* MIST EFFECT */
+    #mist-overlay {
+        position: absolute;
+        top: 0; left: 0; width: 200%; height: 100%;
+        background: radial-gradient(circle at center, transparent 0%, var(--forest-dark) 100%),
+                    url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.15"/></svg>');
+        mix-blend-mode: screen;
+        opacity: 0.4;
+        z-index: 2;
+        pointer-events: none;
+        animation: mistDrift 40s infinite linear, pulseOpacity 8s infinite alternate ease-in-out;
+    }
+
+    @keyframes mistDrift {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+    @keyframes pulseOpacity {
+        0% { opacity: 0.3; }
+        100% { opacity: 0.6; }
+    }
+
+    /* VAEL EFFECT */
+    .vael-text {
+        color: var(--spirit);
+        text-shadow: 0 0 10px var(--spirit), 0 0 20px var(--spirit);
+        filter: url(#wavy);
+        font-family: 'Cinzel', serif;
+        letter-spacing: 2px;
+    }
+
+    /* UI LAYER */
+    #ui-layer {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    /* SPOKEN SEEDS TRACKER */
+    #spoken-seeds-tracker {
+        position: absolute;
+        top: 20px; right: 20px;
+        width: 250px;
+        background: rgba(10, 26, 16, 0.8);
+        border-left: 2px solid var(--forest-accent);
+        padding: 15px;
+        color: var(--forest-light);
+        font-family: 'Cinzel', serif;
+        pointer-events: auto;
+        box-shadow: -5px 0 15px rgba(29, 158, 117, 0.2);
+        transition: opacity 0.5s;
+    }
+    #spoken-seeds-tracker h3 {
+        font-size: 14px;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+        color: var(--forest-accent);
+        text-shadow: 0 0 5px var(--forest-accent);
+    }
+    .seed-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        font-size: 12px;
+        border-bottom: 1px solid rgba(29, 158, 117, 0.2);
+        padding-bottom: 2px;
+    }
+    .seed-item .word { text-transform: uppercase; }
+    .seed-item .days { color: var(--cottage-warm); font-weight: bold; }
+
+    /* TRUST METER */
+    #trust-meter {
+        position: absolute;
+        top: 20px; left: 20px;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .trust-bloom {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(0,0,0,0.5);
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-family: 'Cinzel', serif;
+        font-size: 12px;
+        color: var(--paper);
+    }
+    .bloom-bar {
+        width: 100px;
+        height: 6px;
+        background: #333;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .bloom-fill {
+        height: 100%;
+        background: var(--cottage-warm);
+        width: 0%;
+        transition: width 0.5s ease;
+    }
+
+    /* DIALOGUE BOX */
+    #dialogue-container {
+        position: absolute;
+        bottom: 30px; left: 50%;
+        transform: translateX(-50%);
+        width: 800px;
+        pointer-events: auto;
+        display: none;
+    }
+    #dialogue-box {
+        background: linear-gradient(to bottom, rgba(10, 26, 16, 0.95), rgba(0,0,0,0.95));
+        border: 1px solid var(--forest-mid);
+        border-top: 2px solid var(--forest-accent);
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        border-radius: 4px;
+        position: relative;
+    }
+    #speaker-name {
+        position: absolute;
+        top: -15px; left: 30px;
+        background: var(--forest-dark);
+        border: 1px solid var(--forest-accent);
+        color: var(--forest-light);
+        padding: 5px 15px;
+        font-family: 'Cinzel', serif;
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+    #dialogue-text {
+        font-size: 22px;
+        line-height: 1.5;
+        min-height: 66px;
+        margin-bottom: 20px;
+    }
+    #dialogue-choices {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .choice-btn {
+        background: transparent;
+        border: 1px solid var(--forest-mid);
+        color: var(--paper);
+        padding: 10px 20px;
+        text-align: left;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .choice-btn:hover {
+        background: rgba(29, 158, 117, 0.2);
+        border-color: var(--forest-accent);
+        padding-left: 25px;
+    }
+    .choice-btn.speak-choice {
+        color: var(--forest-light);
+        border-color: var(--forest-accent);
+    }
+    .choice-btn.speak-choice::before {
+        content: '↳ [Speak] ';
+        font-family: 'Cinzel', serif;
+        font-size: 12px;
+        color: var(--forest-accent);
+    }
+
+    /* MODALS (Sketchbook & Journal) */
+    .modal-overlay {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        pointer-events: auto;
+        z-index: 20;
+        opacity: 0;
+        transition: opacity 0.5s;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    
+    .journal-book {
+        width: 600px; height: 800px;
+        max-height: 90vh;
+        background: var(--paper);
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="url(%23n)" opacity="0.05"/></svg>');
+        color: var(--ink);
+        padding: 60px;
+        box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        border-radius: 5px 20px 20px 5px;
+        position: relative;
+        overflow-y: auto;
+        font-family: 'Caveat', cursive;
+        font-size: 26px;
+        line-height: 1.4;
+    }
+    .journal-close {
+        position: absolute; top: 20px; right: 20px;
+        cursor: pointer; font-family: sans-serif; font-size: 24px; color: var(--ink);
+    }
+
+    .sketchbook {
+        width: 800px; height: 600px;
+        background: #e8eceb;
+        border-radius: 10px;
+        box-shadow: inset 0 0 50px rgba(0,0,0,0.1), 0 10px 40px rgba(0,0,0,0.8);
+        display: flex;
+        position: relative;
+    }
+    .sketch-svg {
+        width: 100%; height: 100%;
+    }
+    .sketch-path {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 2000;
+        stroke-dashoffset: 2000;
+        animation: drawPath 3s forwards ease-in-out;
+    }
+    @keyframes drawPath { to { stroke-dashoffset: 0; } }
+    .sketch-caption {
+        position: absolute; bottom: 30px; left: 0; width: 100%;
+        text-align: center; font-family: 'Caveat', cursive; font-size: 28px; color: var(--ink);
+    }
+
+    /* MENUS */
+    #main-menu, #level-title {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        background: var(--forest-dark);
+        z-index: 30; pointer-events: auto;
+    }
+    #main-menu h1 {
+        font-family: 'Cinzel', serif; font-size: 80px; color: var(--forest-light);
+        text-shadow: 0 0 20px var(--forest-accent); margin-bottom: 20px;
+    }
+    #main-menu p { font-size: 24px; color: var(--cottage-warm); margin-bottom: 60px; font-style: italic; }
+    .menu-btn {
+        background: transparent; border: 2px solid var(--forest-mid); color: var(--paper);
+        padding: 15px 40px; font-family: 'Cinzel', serif; font-size: 20px;
+        cursor: pointer; transition: all 0.3s; margin-bottom: 15px; letter-spacing: 2px;
+    }
+    .menu-btn:hover { background: var(--forest-accent); color: var(--forest-dark); border-color: var(--forest-accent); box-shadow: 0 0 20px var(--forest-accent); }
+
+    #level-title h2 { font-family: 'Cinzel', serif; font-size: 40px; color: var(--cottage-warm); margin-bottom: 10px; }
+    #level-title h3 { font-family: 'Cormorant Garamond', serif; font-size: 24px; color: var(--paper); font-weight: normal; }
+
+    /* ACTION BUTTONS */
+    #action-bar {
+        position: absolute; bottom: 20px; right: 20px; display: flex; gap: 15px; pointer-events: auto;
+    }
+    .icon-btn {
+        width: 50px; height: 50px; border-radius: 50%;
+        background: rgba(10,26,16,0.8); border: 2px solid var(--forest-mid);
+        color: var(--paper); display: flex; justify-content: center; align-items: center;
+        cursor: pointer; font-family: 'Cinzel', serif; font-size: 14px; transition: 0.3s;
+    }
+    .icon-btn:hover { border-color: var(--cottage-warm); color: var(--cottage-warm); }
+
+    /* NOTIFICATION */
+    #notification {
+        position: absolute; top: 100px; left: 50%; transform: translateX(-50%);
+        background: rgba(29, 158, 117, 0.9); color: var(--forest-dark);
+        padding: 10px 30px; font-family: 'Cinzel', serif; font-weight: bold;
+        border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.5s; z-index: 100;
+    }
+</style>
+</head>
+<body>
+
+<!-- SVG Filters -->
+<svg id="svg-filters" style="display:none;">
+    <filter id="wavy">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+</svg>
+
+<div id="game-container" class="day">
+    <canvas id="game-canvas"></canvas>
+    <div id="mist-overlay"></div>
+
+    <div id="ui-layer">
+        <!-- Main Menu -->
+        <div id="main-menu">
+            <h1>The Echo Forest</h1>
+            <p>"Anything spoken aloud becomes real..."</p>
+            <button class="menu-btn" id="btn-start">Begin Journey</button>
+        </div>
+
+        <!-- Level Title Screen -->
+        <div id="level-title" style="display:none; opacity: 0; transition: opacity 1s;">
+            <h2 id="lt-main">Level 01</h2>
+            <h3 id="lt-sub">Moonhollow</h3>
+        </div>
+
+        <!-- HUD -->
+        <div id="trust-meter" style="display:none;"></div>
+        <div id="spoken-seeds-tracker" style="display:none;">
+            <h3>Spoken Seeds</h3>
+            <div id="seeds-list"></div>
+        </div>
+
+        <div id="action-bar" style="display:none;">
+            <button class="icon-btn" id="btn-journal" title="Journal">J</button>
+            <button class="icon-btn" id="btn-sketch" title="Sketchbook">S</button>
+            <button class="icon-btn" id="btn-sleep" title="Sleep (Advance Time)">Zzz</button>
+        </div>
+
+        <!-- Dialogue Box -->
+        <div id="dialogue-container">
+            <div id="dialogue-box">
+                <div id="speaker-name"></div>
+                <div id="dialogue-text"></div>
+                <div id="dialogue-choices"></div>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div id="journal-modal" class="modal-overlay">
+            <div class="journal-book">
+                <div class="journal-close" onclick="UI.closeJournal()">X</div>
+                <div id="journal-content"></div>
+            </div>
+        </div>
+
+        <div id="sketchbook-modal" class="modal-overlay">
+            <div class="sketchbook">
+                <div class="journal-close" onclick="UI.closeSketchbook()" style="z-index: 10;">X</div>
+                <svg class="sketch-svg" viewBox="0 0 800 600">
+                    <path id="sketch-lines" class="sketch-path" d="" />
+                </svg>
+                <div class="sketch-caption" id="sketch-caption"></div>
+            </div>
+        </div>
+
+        <div id="notification"></div>
+    </div>
+</div>
+
+<script>
+/**
+ * THE ECHO FOREST - CORE LOGIC
+ */
+
+// --- UTILS ---
+const DOM = {
+    get: id => document.getElementById(id),
+    create: tag => document.createElement(tag)
+};
+
+const Utils = {
+    sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+    randomRange: (min, max) => Math.random() * (max - min) + min,
+    wrapCatch: fn => { try { fn(); } catch(e) { console.error("Game Error Caught:", e); } }
+};
+
+// --- DATA & CONTENT ---
+const GAME_STATE = {
+    level: 1,
+    day: 1,
+    timeOfDay: 'day', // 'day' | 'night'
+    trust: {
+        'Percy Holt': 10,
+        'Mira': 30,
+        'Bowen Oak': 0,
+        'Elda (Spirit)': 100
+    },
+    spokenSeeds: [], // { text: string, daysLeft: int, effect: string }
+    journalPagesFound: [],
+    sketchesMade: [],
+    variables: {} // custom flags
+};
+
+const NPCS = {
+    'Wren': { color: 'var(--paper)' },
+    'Percy Holt': { color: '#8b9691' },
+    'Mira': { color: '#9dcca4' },
+    'Bowen Oak': { color: '#7a826e' },
+    'Vael': { color: 'var(--spirit)', class: 'vael-text' },
+    'System': { color: 'var(--forest-accent)' }
+};
+
+const JOURNAL_ENTRIES = {
+    1: "My dearest Wren. If you are reading this, Moonhollow is yours. Do not be afraid of the trees, but remember the rule: The forest listens.",
+    2: "Percy blames me for his daughter. I understand his pain. But Vael takes only what is freely offered, or foolishly spoken.",
+    3: "The Heartwood is restless. I fear my deal is ending. The cost of silence was high, but the cost of speaking is higher.",
+    4: "Bowen went in. I tried to stop him. He kept asking questions. Vael loves questions without answers.",
+    5: "I am ready. I will walk to the Stillgrove. I leave the pen and the promise to you, little bird. Rewrite it if you have the strength."
+};
+
+const SKETCHES = {
+    'cottage': { path: "M 200 400 L 400 200 L 600 400 L 600 500 L 200 500 Z M 350 500 L 350 400 L 450 400 L 450 500", caption: "Moonhollow Cottage. Dust and old paper." },
+    'mira': { path: "M 400 200 C 450 200 450 300 400 300 C 350 300 350 200 400 200 M 400 300 L 400 500 M 400 350 L 300 450 M 400 350 L 500 450 M 400 500 L 350 600 M 400 500 L 450 600", caption: "Mira. She smells of sage and secrets." },
+    'vael': { path: "M 200 300 Q 400 100 600 300 T 200 300 M 300 250 A 50 50 0 1 1 300 251 M 500 250 A 50 50 0 1 1 500 251", caption: "Vael. It has no face, only eyes." },
+    'tree': { path: "M 400 500 L 400 200 M 400 300 L 300 200 M 400 250 L 500 150 M 300 500 Q 400 600 500 500", caption: "An Ashfen tree. The bark looks like faces." }
+};
+
+const LEVEL_DATA = {
+    1: { title: "Level 01", sub: "Moonhollow", location: 'cottage' },
+    2: { title: "Level 02", sub: "Ashfen Village", location: 'village' },
+    3: { title: "Level 03", sub: "First Step", location: 'forest_edge' },
+    4: { title: "Level 04", sub: "Spoken Thing", location: 'forest_deep' },
+    5: { title: "Level 05", sub: "The Missing", location: 'forest_deep' },
+    6: { title: "Level 06", sub: "Elda's Trail", location: 'village' },
+    7: { title: "Level 07", sub: "Heartwood", location: 'heartwood' },
+    8: { title: "Level 08", sub: "Old Deal", location: 'heartwood' },
+    9: { title: "Level 09", sub: "Village Risk", location: 'village' },
+    10: { title: "Level 10", sub: "New Keeper", location: 'stillgrove' },
+};
+
+// --- DIALOGUE SCRIPT ENGINE ---
+// Format: text, speaker, choices: [{text, next, action, speak}]
+const SCRIPT = {
+    level1_start: {
+        speaker: 'System', text: "You stand in the dusty parlor of Moonhollow Cottage. A journal sits on the table.",
+        choices: [
+            { text: "Read the journal.", next: "level1_journal", action: () => Game.unlockJournal(1) },
+            { text: "Look out the window.", next: "level1_window" }
+        ]
+    },
+    level1_journal: {
+        speaker: 'Wren', text: "Grandma Elda's handwriting... She says 'The forest listens'. What does that mean?",
+        choices: [{ text: "Continue.", next: null, action: () => Game.endDialogueAndProgress() }]
+    },
+    level1_window: {
+        speaker: 'Wren', text: "The trees are so dense. It's almost completely dark in there even during the day.",
+        choices: [{ text: "Turn to the table.", next: "level1_start" }]
+    },
+
+    level2_start: {
+        speaker: 'Mira', text: "You must be Elda's granddaughter. I'm Mira. Don't mind Percy, he's bitter. We try not to go near the tree line.",
+        choices: [
+            { text: "Why not?", next: "level2_why" },
+            { text: "Where is Percy?", next: "level2_percy" }
+        ]
+    },
+    level2_why: {
+        speaker: 'Mira', text: "People who talk to the trees... the trees talk back. Eventually.",
+        choices: [{ text: "Interesting.", next: null, action: () => { Game.modifyTrust('Mira', 5); Game.endDialogueAndProgress(); } }]
+    },
+    level2_percy: {
+        speaker: 'Percy Holt', text: "(Approaching) Another Keeper? Bah. Your grandmother kept secrets that cost my daughter her life.",
+        choices: [{ text: "I'm not my grandmother.", next: null, action: () => { Game.modifyTrust('Percy Holt', -5); Game.endDialogueAndProgress(); } }]
+    },
+
+    level3_start: {
+        speaker: 'System', text: "You stand at the edge of the Echo Forest. The air is heavy.",
+        choices: [
+            { text: "Step inside quietly.", next: "level3_inside" },
+            { text: "Call out: 'Hello?'", next: "level3_inside", speak: true, action: () => Game.addSpokenSeed("Someone to answer", 3, "Someone answers.") }
+        ]
+    },
+    level3_inside: {
+        speaker: 'Wren', text: "It's so quiet. And my sketchbook feels heavy in my bag.",
+        choices: [{ text: "Sketch the trees.", next: null, action: () => { Game.unlockSketch('tree'); Game.endDialogueAndProgress(); } }]
+    },
+
+    level4_start: {
+        speaker: 'System', text: "Days have passed. You feel a strange hum in the air.",
+        choices: [
+            { text: "Wait.", next: "level4_manifest", action: () => Game.advanceTime(3) }
+        ]
+    },
+    level4_manifest: {
+        speaker: 'System', text: "The words you spoke have taken root. The forest changes.",
+        choices: [{ text: "Investigate.", next: null, action: () => Game.endDialogueAndProgress() }]
+    },
+
+    level5_start: {
+        speaker: 'Bowen Oak', text: "Who walks? Why walk? Did the keeper send you?",
+        choices: [
+            { text: "Bowen? You're alive?", next: "level5_alive" },
+            { text: "I am the new Keeper.", next: "level5_keeper", speak: true, action: () => Game.addSpokenSeed("I am the Keeper", 3, "Forest tests you.") }
+        ]
+    },
+    level5_alive: {
+        speaker: 'Bowen Oak', text: "Alive? Is a root alive? Is a stone?",
+        choices: [{ text: "Let me help you.", next: null, action: () => { Game.modifyTrust('Bowen Oak', 10); Game.endDialogueAndProgress(); } }]
+    },
+    level5_keeper: {
+        speaker: 'Bowen Oak', text: "The Keeper! Heed the roots!",
+        choices: [{ text: "Continue.", next: null, action: () => Game.endDialogueAndProgress() }]
+    },
+
+    level6_start: {
+        speaker: 'System', text: "You find another journal page buried near an old stump.",
+        choices: [{ text: "Read it.", next: null, action: () => { Game.unlockJournal(3); Game.endDialogueAndProgress(); } }]
+    },
+
+    level7_start: {
+        speaker: 'Vael', text: "YOU WEAR HER FACE BUT NOT HER SILENCE.",
+        choices: [
+            { text: "Who are you?", next: "level7_who" },
+            { text: "Sketch the entity.", next: "level7_who", action: () => Game.unlockSketch('vael') }
+        ]
+    },
+    level7_who: {
+        speaker: 'Vael', text: "WE ARE THE ECHO. WE KEEP WHAT IS GIVEN.",
+        choices: [{ text: "What did Elda give you?", next: null, action: () => Game.endDialogueAndProgress() }]
+    },
+
+    level8_start: {
+        speaker: 'System', text: "The Heartwood reveals Elda's final memory. She promised her own memories to keep the village safe.",
+        choices: [{ text: "Accept this truth.", next: null, action: () => { Game.unlockJournal(5); Game.endDialogueAndProgress(); } }]
+    },
+
+    level9_start: {
+        speaker: 'Percy Holt', text: "The forest is creeping closer to Ashfen! This is your fault!",
+        choices: [
+            { text: "I will fix it.", next: "level9_fix", speak: true, action: () => Game.addSpokenSeed("I will save them", 1, "Final trial begins.") },
+            { text: "We need to work together.", next: "level9_together" }
+        ]
+    },
+    level9_fix: { speaker: 'Percy Holt', text: "Words! Always words with you Keepers!", choices: [{ text: "Go to the forest.", next: null, action: () => Game.endDialogueAndProgress() }] },
+    level9_together: { speaker: 'Percy Holt', text: "Hmph. If Mira trusts you, I will wait. One night.", choices: [{ text: "Go to the forest.", next: null, action: () => { Game.modifyTrust('Percy Holt', 20); Game.endDialogueAndProgress(); } }] },
+
+    level10_start: {
+        speaker: 'Vael', text: "THE CONTRACT IS DUST. WILL YOU BIND ANEW?",
+        choices: [
+            { text: "Renew the deal (Sacrifice memories).", next: "end_renew" },
+            { text: "Break the deal (Let the forest wild).", next: "end_break" },
+            { text: "Rewrite the rules.", next: "end_rewrite_check" } // Requires max trust
+        ]
+    },
+    end_renew: { speaker: 'System', text: "ENDING A: You forget yourself to save Ashfen. The forest sleeps.", choices: [{ text: "End.", next: null, action: () => Game.showTitle("Game Over", "Ending A: The Silent Keeper") }] },
+    end_break: { speaker: 'System', text: "ENDING B: The forest reclaims Ashfen. You walk away freely.", choices: [{ text: "End.", next: null, action: () => Game.showTitle("Game Over", "Ending B: The Wild Roots") }] },
+    end_rewrite_check: {
+        speaker: 'System', text: "Checking trust...",
+        choices: [{ text: "Proceed.", next: null, action: () => {
+            let totalTrust = GAME_STATE.trust['Percy Holt'] + GAME_STATE.trust['Mira'];
+            if(totalTrust >= 40) Game.playDialogueNode("end_rewrite_success");
+            else Game.playDialogueNode("end_rewrite_fail");
+        }}]
+    },
+    end_rewrite_success: { speaker: 'System', text: "ENDING C: The village stands with you. The forest learns a new language.", choices: [{ text: "End.", next: null, action: () => Game.showTitle("Game Over", "Ending C: The Echoing Heart") }] },
+    end_rewrite_fail: { speaker: 'System', text: "The village does not trust you. You lack the anchor to rewrite.", choices: [{ text: "Choose again.", next: "level10_start" }] }
+};
+
+// --- RENDERING ENGINE ---
+const Renderer = {
+    canvas: null,
+    ctx: null,
+    width: 1280,
+    height: 720,
+    particles: [],
+    frame: 0,
+    animationId: null,
+    currentScene: 'menu',
+
+    init() {
+        this.canvas = DOM.get('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        window.addEventListener('resize', () => this.resize());
+        this.resize();
+        this.loop();
+    },
+
+    resize() {
+        // Keep aspect ratio handling simple for this demo
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+    },
+
+    drawBackground() {
+        let loc = LEVEL_DATA[GAME_STATE.level] ? LEVEL_DATA[GAME_STATE.level].location : 'cottage';
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        // Very basic procedural backgrounds
+        if (loc === 'cottage') {
+            this.ctx.fillStyle = '#2a1e12';
+            this.ctx.fillRect(0,0, this.width, this.height);
+            this.ctx.fillStyle = '#1a1008';
+            this.ctx.fillRect(100, 100, 1080, 520); // Room
+            // Window
+            this.ctx.fillStyle = GAME_STATE.timeOfDay==='day' ? '#5a8276' : '#0a1015';
+            this.ctx.fillRect(800, 150, 200, 300);
+        } else if (loc === 'village') {
+            this.ctx.fillStyle = '#152518';
+            this.ctx.fillRect(0,0, this.width, this.height);
+            // Paths
+            this.ctx.fillStyle = '#2b261e';
+            this.ctx.beginPath();
+            this.ctx.arc(640, 360, 200, 0, Math.PI*2);
+            this.ctx.fill();
+        } else {
+            // Forest variants
+            this.ctx.fillStyle = '#050a07';
+            this.ctx.fillRect(0,0, this.width, this.height);
+            
+            // Draw parallax trees
+            this.ctx.fillStyle = '#0a140f';
+            for(let i=0; i<10; i++) {
+                let x = (i * 150 + (this.frame * 0.2)) % (this.width + 200) - 100;
+                this.ctx.fillRect(x, 100, 80, this.height);
+            }
+            this.ctx.fillStyle = '#0f2016';
+            for(let i=0; i<15; i++) {
+                let x = (i * 100 + (this.frame * 0.5)) % (this.width + 100) - 50;
+                let sway = Math.sin(this.frame * 0.02 + i) * 10;
+                this.ctx.fillRect(x + sway, 0, 40, this.height);
+            }
+            
+            if(loc === 'heartwood') {
+                this.ctx.fillStyle = '#1a0515';
+                this.ctx.beginPath();
+                this.ctx.arc(640, 360, 150 + Math.sin(this.frame*0.05)*10, 0, Math.PI*2);
+                this.ctx.fill();
+            }
+        }
+    },
+
+    updateParticles() {
+        if(GAME_STATE.level > 2 && Math.random() < 0.1 && this.particles.length < 50) {
+            this.particles.push({
+                x: Math.random() * this.width,
+                y: this.height + 10,
+                vx: (Math.random() - 0.5) * 2,
+                vy: -Math.random() * 2 - 0.5,
+                life: 1.0,
+                color: GAME_STATE.timeOfDay === 'night' ? '#AFA9EC' : '#1D9E75'
+            });
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.x += p.vx + Math.sin(this.frame * 0.05 + p.y * 0.01) * 0.5;
+            p.y += p.vy;
+            p.life -= 0.005;
+
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            } else {
+                this.ctx.globalAlpha = p.life;
+                this.ctx.fillStyle = p.color;
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Glow
+                this.ctx.shadowBlur = 10;
+                this.ctx.shadowColor = p.color;
+                this.ctx.fill();
+                this.ctx.shadowBlur = 0;
+            }
+        }
+        this.ctx.globalAlpha = 1.0;
+    },
+
+    loop() {
+        Utils.wrapCatch(() => {
+            this.frame++;
+            if(this.currentScene === 'playing') {
+                this.drawBackground();
+                this.updateParticles();
+            }
+        });
+        this.animationId = requestAnimationFrame(() => this.loop());
+    }
+};
+
+// --- UI MANAGER ---
+const UI = {
+    updateHUD() {
+        // Trust
+        let tHtml = '';
+        for(const [name, val] of Object.entries(GAME_STATE.trust)) {
+            if(val > 0) {
+                tHtml += `<div class="trust-bloom"><span>${name}</span>
+                          <div class="bloom-bar"><div class="bloom-fill" style="width:${val}%"></div></div></div>`;
+            }
+        }
+        DOM.get('trust-meter').innerHTML = tHtml;
+        DOM.get('trust-meter').style.display = tHtml ? 'flex' : 'none';
+
+        // Seeds
+        let sHtml = '';
+        GAME_STATE.spokenSeeds.forEach(seed => {
+            sHtml += `<div class="seed-item">
+                        <span class="word">"${seed.text}"</span>
+                        <span class="days">${seed.daysLeft}d</span>
+                      </div>`;
+        });
+        DOM.get('seeds-list').innerHTML = sHtml;
+        DOM.get('spoken-seeds-tracker').style.display = GAME_STATE.spokenSeeds.length ? 'block' : 'none';
+
+        // Environment
+        DOM.get('game-container').className = GAME_STATE.timeOfDay;
+    },
+
+    showNotification(msg) {
+        let n = DOM.get('notification');
+        n.innerText = msg;
+        n.style.opacity = 1;
+        setTimeout(() => n.style.opacity = 0, 3000);
+    },
+
+    openJournal() {
+        let html = '';
+        if(GAME_STATE.journalPagesFound.length === 0) {
+            html = "No pages found yet.";
+        } else {
+            GAME_STATE.journalPagesFound.forEach(id => {
+                html += `<p style="margin-bottom: 20px;">${JOURNAL_ENTRIES[id]}</p><hr style="border-top:1px solid #ddd; margin-bottom:20px;">`;
+            });
+        }
+        DOM.get('journal-content').innerHTML = html;
+        DOM.get('journal-modal').classList.add('active');
+    },
+    closeJournal() { DOM.get('journal-modal').classList.remove('active'); },
+
+    openSketchbook() {
+        if(GAME_STATE.sketchesMade.length > 0) {
+            // Show latest
+            let sk = SKETCHES[GAME_STATE.sketchesMade[GAME_STATE.sketchesMade.length-1]];
+            DOM.get('sketch-lines').setAttribute('d', sk.path);
+            DOM.get('sketch-lines').style.animation = 'none';
+            DOM.get('sketch-lines').offsetHeight; /* trigger reflow */
+            DOM.get('sketch-lines').style.animation = null; 
+            DOM.get('sketch-caption').innerText = sk.caption;
+        } else {
+            DOM.get('sketch-lines').setAttribute('d', '');
+            DOM.get('sketch-caption').innerText = "Empty pages...";
+        }
+        DOM.get('sketchbook-modal').classList.add('active');
+    },
+    closeSketchbook() { DOM.get('sketchbook-modal').classList.remove('active'); }
+};
+
+// --- GAME CONTROLLER ---
+const Game = {
+    dialogueNode: null,
+
+    init() {
+        Renderer.init();
+        
+        // Bind Menu
+        DOM.get('btn-start').addEventListener('click', () => this.startGame());
+        DOM.get('btn-journal').addEventListener('click', () => UI.openJournal());
+        DOM.get('btn-sketch').addEventListener('click', () => UI.openSketchbook());
+        DOM.get('btn-sleep').addEventListener('click', () => this.advanceTime(1));
+    },
+
+    async startGame() {
+        DOM.get('main-menu').style.display = 'none';
+        Renderer.currentScene = 'playing';
+        DOM.get('action-bar').style.display = 'flex';
+        await this.loadLevel(1);
+    },
+
+    async showTitle(main, sub) {
+        let lt = DOM.get('level-title');
+        DOM.get('lt-main').innerText = main;
+        DOM.get('lt-sub').innerText = sub;
+        lt.style.display = 'flex';
+        // force reflow
+        void lt.offsetWidth;
+        lt.style.opacity = 1;
+        await Utils.sleep(3000);
+        lt.style.opacity = 0;
+        await Utils.sleep(1000);
+        lt.style.display = 'none';
+    },
+
+    async loadLevel(lvlIndex) {
+        GAME_STATE.level = lvlIndex;
+        let ldata = LEVEL_DATA[lvlIndex];
+        if(!ldata) return;
+
+        Renderer.particles = []; // clear particles on level change
+        UI.updateHUD();
+        
+        await this.showTitle(ldata.title, ldata.sub);
+        
+        // Start level dialogue
+        this.playDialogueNode(`level${lvlIndex}_start`);
+    },
+
+    playDialogueNode(nodeId) {
+        if(!nodeId) {
+            DOM.get('dialogue-container').style.display = 'none';
+            return;
+        }
+        let node = SCRIPT[nodeId];
+        if(!node) { console.error("Missing node:", nodeId); return; }
+
+        this.dialogueNode = node;
+        
+        DOM.get('dialogue-container').style.display = 'block';
+        
+        let sn = DOM.get('speaker-name');
+        sn.innerText = node.speaker;
+        
+        let npcData = NPCS[node.speaker];
+        sn.style.color = npcData ? npcData.color : 'var(--paper)';
+        sn.className = npcData && npcData.class ? npcData.class : '';
+
+        // Typing effect
+        let dt = DOM.get('dialogue-text');
+        dt.innerHTML = "";
+        dt.className = npcData && npcData.class ? npcData.class : '';
+        
+        let charIndex = 0;
+        let typeInterval = setInterval(() => {
+            dt.innerHTML += node.text.charAt(charIndex);
+            charIndex++;
+            if(charIndex >= node.text.length) {
+                clearInterval(typeInterval);
+                this.renderChoices(node.choices);
+            }
+        }, 20); // Fast typing
+        
+        DOM.get('dialogue-choices').innerHTML = '';
+    },
+
+    renderChoices(choices) {
+        let box = DOM.get('dialogue-choices');
+        box.innerHTML = '';
+        choices.forEach(c => {
+            let btn = DOM.create('button');
+            btn.className = 'choice-btn';
+            if(c.speak) btn.classList.add('speak-choice');
+            btn.innerText = c.text;
+            btn.onclick = () => {
+                if(c.action) Utils.wrapCatch(c.action);
+                this.playDialogueNode(c.next);
+            };
+            box.appendChild(btn);
+        });
+    },
+
+    endDialogueAndProgress() {
+        DOM.get('dialogue-container').style.display = 'none';
+        // Auto-progress to next level for prototype purposes
+        if(GAME_STATE.level < 10) {
+            setTimeout(() => {
+                this.loadLevel(GAME_STATE.level + 1);
+            }, 1500);
+        }
+    },
+
+    // Mechanics
+    modifyTrust(npc, amount) {
+        GAME_STATE.trust[npc] = (GAME_STATE.trust[npc] || 0) + amount;
+        if(GAME_STATE.trust[npc] > 100) GAME_STATE.trust[npc] = 100;
+        if(GAME_STATE.trust[npc] < 0) GAME_STATE.trust[npc] = 0;
+        UI.showNotification(`${npc} trust changed.`);
+        UI.updateHUD();
+    },
+
+    addSpokenSeed(text, daysLeft, effect) {
+        GAME_STATE.spokenSeeds.push({text, daysLeft, effect});
+        UI.showNotification(`The forest heard you: "${text}"`);
+        UI.updateHUD();
+    },
+
+    unlockJournal(id) {
+        if(!GAME_STATE.journalPagesFound.includes(id)) {
+            GAME_STATE.journalPagesFound.push(id);
+            UI.showNotification("New journal page found.");
+        }
+    },
+
+    unlockSketch(id) {
+        if(!GAME_STATE.sketchesMade.includes(id)) {
+            GAME_STATE.sketchesMade.push(id);
+            UI.showNotification("New sketch added.");
+            UI.openSketchbook();
+        }
+    },
+
+    advanceTime(days) {
+        GAME_STATE.day += days;
+        GAME_STATE.timeOfDay = GAME_STATE.timeOfDay === 'day' ? 'night' : 'day';
+        UI.showNotification(`Time passes... Day ${GAME_STATE.day}, ${GAME_STATE.timeOfDay}`);
+        
+        // Update Spoken Seeds
+        for(let i=GAME_STATE.spokenSeeds.length-1; i>=0; i--) {
+            GAME_STATE.spokenSeeds[i].daysLeft -= days;
+            if(GAME_STATE.spokenSeeds[i].daysLeft <= 0) {
+                let seed = GAME_STATE.spokenSeeds.splice(i, 1)[0];
+                setTimeout(() => {
+                    UI.showNotification(`A seed manifests: ${seed.effect}`);
+                }, 1000);
+            }
+        }
+        UI.updateHUD();
+    }
+};
+
+// Start
+window.onload = () => Game.init();
+
+</script>
+</body>
+</html>
